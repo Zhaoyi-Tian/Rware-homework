@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# 模型 & 日志 (太大，不进仓库)
+checkpoints/
+logs/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
