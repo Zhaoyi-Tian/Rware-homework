@@ -10,6 +10,8 @@ from torch.utils.tensorboard import SummaryWriter
 from config import Config
 from utils import make_envs, set_seed, evaluate
 from algorithms.iac import IAC
+from algorithms.snac import SNAC
+from algorithms.seac import SEAC
 
 
 def parse_args():
@@ -54,6 +56,10 @@ def main():
 
     if config.algorithm == "iac":
         algo = IAC(config, obs_dim, n_actions, n_agents)
+    elif config.algorithm == "snac":
+        algo = SNAC(config, obs_dim, n_actions, n_agents)
+    elif config.algorithm == "seac":
+        algo = SEAC(config, obs_dim, n_actions, n_agents)
     else:
         raise NotImplementedError(f"Algorithm {config.algorithm} not implemented yet")
 

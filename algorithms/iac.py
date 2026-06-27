@@ -17,7 +17,7 @@ class IAC(BaseAlgorithm):
             for _ in range(n_agents)
         ]).to(self.device)
         self.optimizers = [
-            optim.Adam(net.parameters(), lr=config.lr)
+            optim.Adam(net.parameters(), lr=config.lr, eps=config.adam_eps)
             for net in self.networks
         ]
 

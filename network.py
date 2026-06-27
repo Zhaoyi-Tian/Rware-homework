@@ -1,4 +1,7 @@
-"""Actor-Critic 网络。"""
+"""Actor-Critic 网络。
+
+与 SEAC 原版一致：actor 和 critic 各有一份独立 MLP，不共享参数。
+"""
 
 import numpy as np
 import torch
@@ -6,36 +9,33 @@ import torch.nn as nn
 from torch.distributions import Categorical
 
 
-def _init_layer(m):
-    """正交初始化：gain=√2，bias=0。"""
+def _init_orth(m, gain=np.sqrt(2)):
     if isinstance(m, nn.Linear):
-        nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+        nn.init.orthogonal_(m.weight, gain=gain)
         nn.init.constant_(m.bias, 0)
+    return m
 
 
 class ActorCritic(nn.Module):
-    """MLP Actor-Critic：
-       obs → Linear(hidden) → ReLU → Linear(hidden) → ReLU
-                                        ├─→ actor: Linear(hidden, n_actions)
-                                        └─→ critic: Linear(hidden, 1)
-    """
-
-    def __init__(self, obs_dim: int, n_actions: int, hidden_dim: int = 128):
+    def __init__(self, obs_dim: int, n_actions: int, hidden_dim: int = 64):
         super().__init__()
-        self.shared = nn.Sequential(
-            nn.Linear(obs_dim, hidden_dim), nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+        self.actor = nn.Sequential(
+            _init_orth(nn.Linear(obs_dim, hidden_dim)),
+            nn.ReLU(),
+            _init_orth(nn.Linear(hidden_dim, hidden_dim)),
+            nn.ReLU(),
         )
-        self.actor = nn.Linear(hidden_dim, n_actions)
-        self.critic = nn.Linear(hidden_dim, 1)
-
-        self.apply(_init_layer)
-        nn.init.orthogonal_(self.actor.weight, gain=0.01)
-        nn.init.constant_(self.actor.bias, 0)
+        self.critic = nn.Sequential(
+            _init_orth(nn.Linear(obs_dim, hidden_dim)),
+            nn.ReLU(),
+            _init_orth(nn.Linear(hidden_dim, hidden_dim)),
+            nn.ReLU(),
+        )
+        self.critic_head = _init_orth(nn.Linear(hidden_dim, 1))
+        self.actor_head = _init_orth(nn.Linear(hidden_dim, n_actions), gain=0.01)
 
     def forward(self, obs):
-        feat = self.shared(obs)
-        return self.critic(feat), self.actor(feat)
+        return self.critic_head(self.critic(obs)), self.actor_head(self.actor(obs))
 
     def act(self, obs, deterministic=False):
         value, logits = self.forward(obs)
