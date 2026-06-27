@@ -11,7 +11,7 @@ class Config:
     seed: int = 42
 
     # 网络
-    hidden_dim: int = 64
+    hidden_dim: int = 128
     adam_eps: float = 0.001
 
     # A2C 训练
