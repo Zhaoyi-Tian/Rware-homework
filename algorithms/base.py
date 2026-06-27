@@ -43,6 +43,10 @@ class BaseAlgorithm(ABC):
         ]
         completed_rewards = []
 
+        _zeros = torch.zeros(n_envs, 1)
+        _ones = torch.ones(n_envs, 1)
+        _rew = torch.zeros(n_envs, self.n_agents, 1)
+
         for step in range(self.config.num_steps):
             obs_batches = [
                 torch.from_numpy(np.stack([
@@ -55,19 +59,15 @@ class BaseAlgorithm(ABC):
                 with torch.no_grad():
                     value, action, log_prob = self.networks[i].act(obs_batch)
                 buffers[i].insert(
-                    obs=obs_batch,
-                    action=action,
-                    reward=torch.zeros(n_envs, 1),
-                    log_prob=log_prob,
-                    value=value,
-                    mask=torch.ones(n_envs, 1),
-                    bad_mask=torch.ones(n_envs, 1),
+                    obs=obs_batch, action=action,
+                    reward=_zeros, log_prob=log_prob, value=value,
+                    mask=_ones, bad_mask=_ones,
                 )
                 batched_actions.append(action)
 
-            rewards_batch = torch.zeros(n_envs, self.n_agents, 1)
-            masks = torch.ones(n_envs, 1)
-            bad_masks = torch.ones(n_envs, 1)
+            _rew.zero_()
+            _masks = _ones.clone()
+            _bad_masks = _ones.clone()
             next_obs = [None] * n_envs
 
             for e_idx, env in enumerate(envs):
@@ -80,9 +80,9 @@ class BaseAlgorithm(ABC):
                 mask = 0.0 if (done or truncated) else 1.0
                 bad_mask = 0.0 if truncated else 1.0
                 for i in range(self.n_agents):
-                    rewards_batch[e_idx, i, 0] = rewards[i]
-                masks[e_idx, 0] = mask
-                bad_masks[e_idx, 0] = bad_mask
+                    _rew[e_idx, i, 0] = rewards[i]
+                _masks[e_idx, 0] = mask
+                _bad_masks[e_idx, 0] = bad_mask
 
                 if done or truncated:
                     obs, info = env.reset()
@@ -90,9 +90,9 @@ class BaseAlgorithm(ABC):
 
             self._current_obs = next_obs
             for i in range(self.n_agents):
-                buffers[i].rewards[step] = rewards_batch[:, i]
-                buffers[i].masks[step] = masks
-                buffers[i].bad_masks[step] = bad_masks
+                buffers[i].rewards[step] = _rew[:, i]
+                buffers[i].masks[step] = _masks
+                buffers[i].bad_masks[step] = _bad_masks
 
         for i in range(self.n_agents):
             obs_batch = torch.from_numpy(np.stack([
