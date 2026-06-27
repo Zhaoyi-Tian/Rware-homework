@@ -3,7 +3,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.distributions import Categorical
+import torch.nn.functional as F
 
 
 def _init_orth(m, gain=np.sqrt(2)):
@@ -31,11 +31,18 @@ class ActorCritic(nn.Module):
 
     def act(self, obs, deterministic=False):
         value, logits = self.forward(obs)
-        dist = Categorical(logits=logits)
-        action = dist.probs.argmax(dim=-1) if deterministic else dist.sample()
-        return value, action, dist.log_prob(action)
+        log_probs_full = F.log_softmax(logits, dim=-1)
+        if deterministic:
+            action = logits.argmax(dim=-1)
+        else:
+            action = torch.multinomial(log_probs_full.exp(), 1).squeeze(-1)
+        log_prob = log_probs_full.gather(-1, action.unsqueeze(-1)).squeeze(-1)
+        return value, action, log_prob
 
     def evaluate(self, obs, action):
         value, logits = self.forward(obs)
-        dist = Categorical(logits=logits)
-        return value, dist.log_prob(action), dist.entropy().mean()
+        log_probs_full = F.log_softmax(logits, dim=-1)
+        log_prob = log_probs_full.gather(-1, action.unsqueeze(-1)).squeeze(-1)
+        probs = log_probs_full.exp()
+        entropy = -(probs * log_probs_full).sum(-1).mean()
+        return value, log_prob, entropy

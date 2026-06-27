@@ -31,36 +31,39 @@ class SEACPooled(BaseAlgorithm):
         loss_stats = {}
 
         for i, (net, opt) in enumerate(zip(self.networks, self.optimizers)):
-            all_obs, all_actions, all_returns, all_weights = [], [], [], []
+            all_values, all_log_probs, all_returns, all_weights, all_entropy = [], [], [], [], []
 
             for j, buf in enumerate(rollouts):
                 obs, actions, old_log_probs, returns, _ = buf.get_batch()
                 obs = obs.reshape(-1, self.obs_dim)
                 actions = actions.reshape(-1)
                 returns = returns.reshape(-1, 1)
+                n_j = returns.shape[0]
+
+                # 一次 evaluate，同时拿到 ratio 和 loss 需要的 log_probs
+                values_j, log_probs_j, entropy_j = net.evaluate(obs, actions)
 
                 if j == i:
-                    weight = torch.ones(returns.shape[0], 1)
+                    weight = torch.ones(n_j, 1)
                 else:
                     old_log_probs = old_log_probs.reshape(-1, 1)
-                    _, log_probs_ij, _ = net.evaluate(obs, actions)
-                    weight = (log_probs_ij.unsqueeze(-1).exp()
+                    weight = (log_probs_j.unsqueeze(-1).exp()
                               / (old_log_probs.exp() + 1e-7)).detach()
 
-                all_obs.append(obs)
-                all_actions.append(actions)
+                all_values.append(values_j)
+                all_log_probs.append(log_probs_j)
                 all_returns.append(returns)
                 all_weights.append(weight)
+                all_entropy.append(entropy_j * n_j)
 
-            obs = torch.cat(all_obs)
-            actions = torch.cat(all_actions)
+            values = torch.cat(all_values).unsqueeze(-1)
+            log_probs = torch.cat(all_log_probs).unsqueeze(-1)
             returns = torch.cat(all_returns)
             weights = torch.cat(all_weights)
+            entropy = sum(all_entropy) / returns.shape[0]
 
-            values, log_probs, entropy = net.evaluate(obs, actions)
             advantages = returns - values
-
-            policy_loss = -(weights * log_probs.unsqueeze(-1) * advantages.detach()).mean()
+            policy_loss = -(weights * log_probs * advantages.detach()).mean()
             value_loss = (weights * advantages.pow(2)).mean()
 
             loss = (
