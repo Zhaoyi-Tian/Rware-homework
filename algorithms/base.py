@@ -104,14 +104,19 @@ class BaseAlgorithm(ABC):
 
         return buffers, completed_rewards
 
-    def save(self, path: str):
+    def save(self, path: str, total_steps: int = 0):
         os.makedirs(path, exist_ok=True)
-        torch.save(
-            {f"network_{i}": net.state_dict() for i, net in enumerate(self.networks)},
-            os.path.join(path, "model.pt"),
-        )
+        state = {
+            "total_steps": total_steps,
+            "networks": {str(i): net.state_dict() for i, net in enumerate(self.networks)},
+            "optimizers": {str(i): opt.state_dict() for i, opt in enumerate(self.optimizers)},
+        }
+        torch.save(state, os.path.join(path, "model.pt"))
 
     def load(self, path: str):
-        checkpoint = torch.load(os.path.join(path, "model.pt"), map_location=self.device)
+        state = torch.load(path, map_location=self.device)
         for i, net in enumerate(self.networks):
-            net.load_state_dict(checkpoint[f"network_{i}"])
+            net.load_state_dict(state["networks"][str(i)])
+        for i, opt in enumerate(self.optimizers):
+            opt.load_state_dict(state["optimizers"][str(i)])
+        return state.get("total_steps", 0)

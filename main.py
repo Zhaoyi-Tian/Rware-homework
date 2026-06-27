@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--log-dir", type=str, default=None)
     parser.add_argument("--checkpoint-dir", type=str, default=None)
+    parser.add_argument("--resume", type=str, default=None)
     return parser.parse_args()
 
 
@@ -79,11 +80,22 @@ def main():
     episode_rewards = []
     steps_per_update = config.num_envs * config.num_steps
     num_updates = config.total_steps // steps_per_update
-    start_time = time.time()
+
+    start_update = 0
+    if args.resume:
+        resume_path = args.resume if args.resume.endswith(".pt") else os.path.join(args.resume, "model.pt")
+        resumed_steps = algo.load(resume_path)
+        start_update = resumed_steps // steps_per_update
+        print(f"Resumed from step {resumed_steps:,}, starting at update {start_update + 1}")
+
+    if start_update == 0:
+        start_time = time.time()
+    else:
+        start_time = time.time() - start_update * steps_per_update / 1000  # 近似
 
     print(f"\nTraining for {num_updates} updates ({config.total_steps} steps)...\n")
 
-    for update_idx in range(1, num_updates + 1):
+    for update_idx in range(start_update + 1, num_updates + 1):
         rollouts, completed = algo.collect_rollout(envs)
         episode_rewards.extend(completed)
 
@@ -112,11 +124,11 @@ def main():
                               n_episodes=config.eval_episodes, seed=config.seed)
             writer.add_scalar("eval/mean_reward", eval_r, total_steps_done)
             print(f"  >>> Eval at step {total_steps_done:9,d}: mean reward = {eval_r:.3f}")
-            algo.save(checkpoint_path)
+            algo.save(checkpoint_path, total_steps_done)
             print(f"  >>> Checkpoint saved to {checkpoint_path}")
 
 
-    algo.save(checkpoint_path)
+    algo.save(checkpoint_path, total_steps_done)
     print(f"\nFinal model saved to {checkpoint_path}")
 
     for e in envs:

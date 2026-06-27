@@ -14,10 +14,10 @@ class SNAC(BaseAlgorithm):
         super().__init__(config, obs_dim, n_actions, n_agents)
         shared = ActorCritic(obs_dim, n_actions, config.hidden_dim).to(self.device)
         self.networks = torch.nn.ModuleList([shared] * n_agents)
-        self.optimizer = optim.Adam(shared.parameters(), lr=config.lr, eps=config.adam_eps)
+        self.optimizers = [optim.Adam(shared.parameters(), lr=config.lr, eps=config.adam_eps)]
 
     def update(self, rollouts: list) -> dict:
-        self.optimizer.zero_grad()
+        self.optimizers[0].zero_grad()
 
         all_obs, all_actions, all_returns = [], [], []
         for buf in rollouts:
@@ -43,7 +43,7 @@ class SNAC(BaseAlgorithm):
 
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.networks[0].parameters(), self.config.max_grad_norm)
-        self.optimizer.step()
+        self.optimizers[0].step()
 
         return {
             "agent0/policy_loss": policy_loss.item(),
