@@ -17,9 +17,9 @@ class Config:
     # A2C 训练
     lr: float = 3e-4
     gamma: float = 0.99
-    num_envs: int = 8            # 并行环境数
-    num_steps: int = 20          # 每次 rollout 的步数
-    total_steps: int = 60_000_000
+    num_envs: int = 4            # 并行环境数
+    num_steps: int = 5            # 每次 rollout 的步数
+    total_steps: int = 80_000_000
     entropy_coef: float = 0.01
     value_loss_coef: float = 0.5
     max_grad_norm: float = 0.5
