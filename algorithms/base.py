@@ -45,9 +45,7 @@ class BaseAlgorithm(ABC):
 
         _zeros = torch.zeros(n_envs, 1)
         _ones = torch.ones(n_envs, 1)
-        _rew_np = np.zeros((n_envs, self.n_agents), dtype=np.float32)
-        _masks_np = np.ones(n_envs, dtype=np.float32)
-        _bad_masks_np = np.ones(n_envs, dtype=np.float32)
+        _rew = torch.zeros(n_envs, self.n_agents, 1)
 
         for step in range(self.config.num_steps):
             obs_batches = [
@@ -67,9 +65,9 @@ class BaseAlgorithm(ABC):
                 )
                 batched_actions.append(action)
 
-            _rew_np.fill(0)
-            _masks_np.fill(1)
-            _bad_masks_np.fill(1)
+            _rew.zero_()
+            _masks = _ones.clone()
+            _bad_masks = _ones.clone()
             next_obs = [None] * n_envs
 
             for e_idx, env in enumerate(envs):
@@ -81,9 +79,10 @@ class BaseAlgorithm(ABC):
 
                 mask = 0.0 if (done or truncated) else 1.0
                 bad_mask = 0.0 if truncated else 1.0
-                _rew_np[e_idx] = np.array(rewards)
-                _masks_np[e_idx] = mask
-                _bad_masks_np[e_idx] = bad_mask
+                for i in range(self.n_agents):
+                    _rew[e_idx, i, 0] = rewards[i]
+                _masks[e_idx, 0] = mask
+                _bad_masks[e_idx, 0] = bad_mask
 
                 if done or truncated:
                     obs, info = env.reset()
@@ -91,9 +90,9 @@ class BaseAlgorithm(ABC):
 
             self._current_obs = next_obs
             for i in range(self.n_agents):
-                buffers[i].rewards[step] = torch.from_numpy(_rew_np[:, i:i+1].copy())
-                buffers[i].masks[step] = torch.from_numpy(_masks_np[:, None].copy())
-                buffers[i].bad_masks[step] = torch.from_numpy(_bad_masks_np[:, None].copy())
+                buffers[i].rewards[step] = _rew[:, i]
+                buffers[i].masks[step] = _masks
+                buffers[i].bad_masks[step] = _bad_masks
 
         for i in range(self.n_agents):
             obs_batch = torch.from_numpy(np.stack([
