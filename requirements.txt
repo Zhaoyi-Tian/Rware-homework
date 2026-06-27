@@ -1,0 +1,7 @@
+torch>=2.0
+numpy
+gymnasium>=1.0
+tensorboard
+networkx
+pyglet<2
+git+https://github.com/uoe-agents/robotic-warehouse.git
