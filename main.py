@@ -7,6 +7,11 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+torch.set_num_threads(1)
+
 from config import Config
 from utils import make_envs, set_seed, evaluate
 from algorithms.iac import IAC
@@ -32,7 +37,6 @@ def parse_args():
 
 def main():
     args = parse_args()
-    torch.set_num_threads(1)
     cfg = Config()
     if args.env is not None: cfg.env_name = args.env
     if args.algorithm is not None: cfg.algorithm = args.algorithm

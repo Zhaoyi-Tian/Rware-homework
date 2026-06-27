@@ -68,7 +68,7 @@ def evaluate(agent, env_name: str, n_episodes: int = 10,
             actions = []
             for i, ob in enumerate(obs):
                 ob_tensor = torch.from_numpy(ob).float().unsqueeze(0)
-                with torch.no_grad():
+                with torch.inference_mode():
                     _, action, _ = agent.networks[i].act(ob_tensor, deterministic=True)
                 actions.append(action.item())
 

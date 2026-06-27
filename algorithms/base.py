@@ -56,7 +56,7 @@ class BaseAlgorithm(ABC):
             ]
             batched_actions = []
             for i, obs_batch in enumerate(obs_batches):
-                with torch.no_grad():
+                with torch.inference_mode():
                     value, action, log_prob = self.networks[i].act(obs_batch)
                 buffers[i].insert(
                     obs=obs_batch, action=action,
@@ -98,7 +98,7 @@ class BaseAlgorithm(ABC):
             obs_batch = torch.from_numpy(np.stack([
                 self._current_obs[e_idx][i] for e_idx in range(n_envs)
             ])).float()
-            with torch.no_grad():
+            with torch.inference_mode():
                 next_value = self.networks[i].forward(obs_batch)[0]
             buffers[i].compute_returns(next_value, self.config.gamma)
 

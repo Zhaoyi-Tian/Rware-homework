@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 cd "$(dirname "$0")"
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1"
 
 echo "=== Phase 1: tiny-2ag (80M) — 4 进程并行 ==="
 caffeinate python main.py --algorithm iac         --env rware-tiny-2ag-v2 --total-steps 80000000 --seed 42 &
