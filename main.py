@@ -6,6 +6,7 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 import time
 import argparse
@@ -14,6 +15,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
 
 from config import Config
 from utils import make_envs, set_seed, evaluate
@@ -21,13 +23,14 @@ from algorithms.iac import IAC
 from algorithms.snac import SNAC
 from algorithms.seac import SEAC
 from algorithms.seac_pooled import SEACPooled
+from algorithms.seac_cc import SEACCC
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RWARE A2C Training")
     parser.add_argument("--env", type=str, default=None)
     parser.add_argument("--algorithm", type=str, default=None,
-                        choices=["iac", "snac", "seac", "seac_pooled"])
+                        choices=["iac", "snac", "seac", "seac_pooled", "seac_cc"])
     parser.add_argument("--total-steps", type=int, default=None)
     parser.add_argument("--num-envs", type=int, default=None)
     parser.add_argument("--num-steps", type=int, default=None)
@@ -71,6 +74,8 @@ def main():
         algo = SEAC(config, obs_dim, n_actions, n_agents)
     elif config.algorithm == "seac_pooled":
         algo = SEACPooled(config, obs_dim, n_actions, n_agents)
+    elif config.algorithm == "seac_cc":
+        algo = SEACCC(config, obs_dim, n_actions, n_agents)
     else:
         raise NotImplementedError(f"Algorithm {config.algorithm} not implemented yet")
 
