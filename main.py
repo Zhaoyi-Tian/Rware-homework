@@ -1,15 +1,18 @@
 """训练入口。"""
 
 import os
+
+# 必须在 import torch/numpy 之前设置，否则库初始化后无效
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+
 import time
 import argparse
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 torch.set_num_threads(1)
 
 from config import Config
