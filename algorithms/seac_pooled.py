@@ -84,7 +84,7 @@ class SEACPooled(BaseAlgorithm):
 
             loss_stats[f"agent{i}/policy_loss"] = policy_loss.item()
             loss_stats[f"agent{i}/value_loss"] = value_loss.item()
-            loss_stats[f"agent{i}/weighted_entropy"] = weighted_entropy.item()
+            loss_stats[f"agent{i}/entropy"] = weighted_entropy.item()
             loss_stats[f"agent{i}/total_loss"] = loss.item()
 
         return loss_stats
