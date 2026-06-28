@@ -7,6 +7,7 @@
 """
 
 import torch
+import torch.nn.functional as F
 import torch.optim as optim
 from algorithms.base import BaseAlgorithm
 from network import ActorCritic
@@ -57,16 +58,23 @@ class SEACPooled(BaseAlgorithm):
             returns = torch.cat(all_returns)
             weights = torch.cat(all_weights)
 
-            values, log_probs, entropy = net.evaluate(obs, actions)
+            values, log_probs, _ = net.evaluate(obs, actions)
             advantages = returns - values
 
             policy_loss = -(weights * log_probs.unsqueeze(-1) * advantages.detach()).mean()
             value_loss = (weights * advantages.pow(2)).mean()
 
+            # 加权熵：每个样本的熵乘以 importance weight，与 policy/value loss 一致
+            _, logits = net.forward(obs)
+            full_log_probs = F.log_softmax(logits, -1)
+            probs = full_log_probs.exp()
+            per_sample_entropy = -(probs * full_log_probs).sum(-1)
+            weighted_entropy = (weights.squeeze() * per_sample_entropy).mean()
+
             loss = (
                 policy_loss
                 + self.config.value_loss_coef * value_loss
-                - self.config.entropy_coef * entropy
+                - self.config.entropy_coef * weighted_entropy
             )
 
             opt.zero_grad()
@@ -76,7 +84,7 @@ class SEACPooled(BaseAlgorithm):
 
             loss_stats[f"agent{i}/policy_loss"] = policy_loss.item()
             loss_stats[f"agent{i}/value_loss"] = value_loss.item()
-            loss_stats[f"agent{i}/entropy"] = entropy.item()
+            loss_stats[f"agent{i}/weighted_entropy"] = weighted_entropy.item()
             loss_stats[f"agent{i}/total_loss"] = loss.item()
 
         return loss_stats
