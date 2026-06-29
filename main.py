@@ -24,13 +24,15 @@ from algorithms.snac import SNAC
 from algorithms.seac import SEAC
 from algorithms.seac_pooled import SEACPooled
 from algorithms.seac_cc import SEACCC
+from algorithms.seac_sil import SEACSIL
+from algorithms.iac_sil import IACSIL
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RWARE A2C Training")
     parser.add_argument("--env", type=str, default=None)
     parser.add_argument("--algorithm", type=str, default=None,
-                        choices=["iac", "snac", "seac", "seac_pooled", "seac_cc"])
+                        choices=["iac", "snac", "seac", "seac_pooled", "seac_cc", "seac_sil", "iac_sil"])
     parser.add_argument("--total-steps", type=int, default=None)
     parser.add_argument("--num-envs", type=int, default=None)
     parser.add_argument("--num-steps", type=int, default=None)
@@ -76,6 +78,10 @@ def main():
         algo = SEACPooled(config, obs_dim, n_actions, n_agents)
     elif config.algorithm == "seac_cc":
         algo = SEACCC(config, obs_dim, n_actions, n_agents)
+    elif config.algorithm == "seac_sil":
+        algo = SEACSIL(config, obs_dim, n_actions, n_agents)
+    elif config.algorithm == "iac_sil":
+        algo = IACSIL(config, obs_dim, n_actions, n_agents)
     else:
         raise NotImplementedError(f"Algorithm {config.algorithm} not implemented yet")
 

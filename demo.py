@@ -11,10 +11,13 @@ from algorithms.snac import SNAC
 from algorithms.seac import SEAC
 from algorithms.seac_pooled import SEACPooled
 from algorithms.seac_cc import SEACCC
+from algorithms.seac_sil import SEACSIL
+from algorithms.iac_sil import IACSIL
 
 warnings.filterwarnings("ignore")
 ALGO_MAP = {"iac": IAC, "snac": SNAC, "seac": SEAC,
-            "seac_pooled": SEACPooled, "seac_cc": SEACCC}
+            "seac_pooled": SEACPooled, "seac_cc": SEACCC,
+            "seac_sil": SEACSIL, "iac_sil": IACSIL}
 
 
 def parse_checkpoint(path):

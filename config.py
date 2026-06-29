@@ -21,6 +21,8 @@ class Config:
     num_steps: int = 5            # 每次 rollout 的步数
     total_steps: int = 80_000_000
     entropy_coef: float = 0.01
+    sil_coef: float = 1.0
+    sil_capacity: int = 10000
     value_loss_coef: float = 0.5
     max_grad_norm: float = 0.5
 
