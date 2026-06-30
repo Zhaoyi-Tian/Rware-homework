@@ -24,8 +24,9 @@ class SEACCC(BaseAlgorithm):
         ]
 
     def _ego_joint_obs(self, obs_batches: list, ego_idx: int) -> torch.Tensor:
+        # ego: full obs; others: only xy (first 2 dims)
         ordered = [obs_batches[ego_idx]]
-        ordered.extend(obs_batches[j] for j in range(self.n_agents) if j != ego_idx)
+        ordered.extend(obs_batches[j][:, :2] for j in range(self.n_agents) if j != ego_idx)
         return torch.cat(ordered, dim=-1)
 
     def _rollout_joint_obs(self, rollouts: list, ego_idx: int) -> torch.Tensor:

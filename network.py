@@ -55,7 +55,7 @@ class CentralizedActorCritic(nn.Module):
     def __init__(self, obs_dim: int, n_actions: int, n_agents: int,
                  hidden_dim: int = 128):
         super().__init__()
-        joint_obs_dim = obs_dim * n_agents
+        joint_obs_dim = obs_dim + 2 * (n_agents - 1)
 
         self.actor_body = nn.Sequential(
             _init_orth(nn.Linear(obs_dim, hidden_dim)),
