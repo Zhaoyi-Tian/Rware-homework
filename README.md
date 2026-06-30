@@ -125,6 +125,6 @@ All hyperparameters in [`config.py`](config.py):
   author = {Zhaoyi Tian},
   title  = {RWARE Multi-Agent RL: SEAC Training, Analysis \& Improvements},
   year   = {2025},
-  url    = {https://github.com/Zhaoyi-Tian/Rware-homework}
+  url    = {https://github.com/Zhaoyi-Tian/Rware-seac-analysis}
 }
 ```
