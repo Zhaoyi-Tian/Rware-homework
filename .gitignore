@@ -2,9 +2,7 @@
 __pycache__/
 *.py[cod]
 
-# 模型 & 日志 & 视频 (太大，不进仓库)
-checkpoints/
-logs/
+# 视频 (太大，不进仓库)
 videos/
 
 # macOS
