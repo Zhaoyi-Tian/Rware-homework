@@ -1,6 +1,6 @@
-# RWARE 多智能体强化学习：SEAC 训练、分析与改进
+# RWARE 多智能体基础：SEAC 训练、分析与改进
 
-多智能体强化学习课程作业 —— 在 RWARE 仓储环境中复现 SEAC 算法，发现并修正熵不对称问题，提出 SEAC-SIL 加速收敛。
+多智能体基础课程作业 —— 在 RWARE 仓储环境中复现 SEAC 算法，发现并修正熵不对称问题，提出 SEAC-SIL 加速收敛。
 
 **完整报告：** [report.pdf](report.pdf)
 
