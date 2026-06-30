@@ -29,17 +29,21 @@ ENVS = [("tiny-2ag", "rware-tiny-2ag-v2"), ("small-4ag", "rware-small-4ag-v2")]
 ALGOS = ["IAC", "SNAC", "SEAC", "SEAC-Pooled"]
 ALGO_CLS = {"IAC": IAC, "SNAC": SNAC, "SEAC": SEAC, "SEAC-Pooled": SEACPooled}
 COLORS = {"IAC": "#4C72B0", "SNAC": "#DD8452", "SEAC": "#55A868", "SEAC-Pooled": "#8172B3"}
-TEMPERATURES = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.25, 1.5, 2.0]
-EVAL_SEEDS = 5
+TEMPERATURES = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
+                0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0,
+                1.25, 1.5, 2.0, 3.0, 4.0, 5.0]
+EVAL_SEEDS = 10
 
 plt.rcParams.update({
     "font.family": "sans-serif", "font.sans-serif": ["Helvetica", "Arial", "DejaVu Sans"],
-    "font.size": 9.5, "axes.labelsize": 10, "xtick.labelsize": 8.5, "ytick.labelsize": 8.5,
-    "figure.dpi": 300, "savefig.bbox": "tight", "lines.linewidth": 1.3,
+    "font.size": 10, "font.weight": "medium",
+    "axes.labelsize": 11, "axes.labelweight": "medium",
+    "xtick.labelsize": 9, "ytick.labelsize": 9,
+    "figure.dpi": 300, "savefig.bbox": "tight", "lines.linewidth": 1.5,
     "axes.facecolor": "#EAEAF2", "axes.edgecolor": "none", "axes.grid": True,
     "grid.color": "white", "grid.linestyle": "-", "grid.linewidth": 1.0,
     "legend.frameon": True, "legend.facecolor": "white", "legend.edgecolor": "none",
-    "legend.framealpha": 0.8, "legend.fontsize": 8.5,
+    "legend.framealpha": 0.8, "legend.fontsize": 9,
 })
 
 
@@ -59,8 +63,10 @@ def load_algo(algo_name, env_tag, env_name):
 
 
 def eval_temp(algo, env_name, T, n_episodes, rng):
+    """返回 (rewards_array, mean_entropy)。"""
     env = gym.make(env_name)
     rewards = np.zeros(n_episodes)
+    entropies = []
     for ep in range(n_episodes):
         obs, _ = env.reset(seed=int(rng.integers(0, 2**31)))
         done, truncated = False, False
@@ -73,10 +79,21 @@ def eval_temp(algo, env_name, T, n_episodes, rng):
                 else:
                     acts = [int(algo.networks[i].act(ot[i], deterministic=False, temperature=T)[1].item())
                             for i in range(algo.n_agents)]
+                # 记录当前策略的有效熵（T=0 时 argmax→H=0）
+                if T == 0.0:
+                    entropies.append(0.0)
+                else:
+                    for i in range(algo.n_agents):
+                        _, logits = algo.networks[i].forward(ot[i])
+                        logits = logits / T
+                        lp = torch.log_softmax(logits, -1)
+                        p = lp.exp()
+                        H = -(p * lp).sum(-1).mean().item()
+                        entropies.append(H)
             obs, r, done, truncated, info = env.step(acts)
             rewards[ep] += sum(r)
     env.close()
-    return rewards
+    return rewards, np.mean(entropies) if entropies else 0.0
 
 
 def read_tb(log_dir, tag):
@@ -89,6 +106,10 @@ def read_tb(log_dir, tag):
 
 def smooth(y, w=50):
     return np.convolve(y, np.ones(w) / w, mode="valid") if len(y) > w else y
+
+def smooth_light(y, w=3):
+    if len(y) <= w: return y
+    return np.convolve(y, np.ones(w) / w, mode="same")
 
 
 def collect_train(env_tag):
@@ -115,9 +136,9 @@ def collect_temp(env_tag, env_name, rng):
         except Exception as e: print(f"SKIP {algo_name} {env_tag}: {e}"); continue
         d = {}
         for T in TEMPERATURES:
-            r = eval_temp(algo, env_name, T, EVAL_SEEDS, rng)
-            d[T] = (np.mean(r), np.std(r))
-            print(f"  {algo_name:12s} {env_tag} T={T:<5} mean={np.mean(r):5.1f}")
+            r, h = eval_temp(algo, env_name, T, EVAL_SEEDS, rng)
+            d[T] = (np.mean(r), np.std(r), h)  # (reward_mean, reward_std, entropy)
+            print(f"  {algo_name:12s} {env_tag} T={T:<5} H={h:.3f} reward={np.mean(r):5.1f}")
         result[algo_name] = d
     return result
 
@@ -125,8 +146,8 @@ def collect_temp(env_tag, env_name, rng):
 def plot(train_data, temp_data):
     fig, axes = plt.subplots(2, 3, figsize=(14, 7.5))
     sub_labels = [
-        ["(a) tiny-2ag: Train Reward", "(b) tiny-2ag: Train Entropy", "(c) tiny-2ag: Temperature Sweep"],
-        ["(d) small-4ag: Train Reward", "(e) small-4ag: Train Entropy", "(f) small-4ag: Temperature Sweep"],
+        ["(a) tiny-2ag: Train Reward", "(b) tiny-2ag: Train Entropy", "(c) tiny-2ag: Reward vs Entropy"],
+        ["(d) small-4ag: Train Reward", "(e) small-4ag: Train Entropy", "(f) small-4ag: Reward vs Entropy"],
     ]
 
     for row, (env_tag, _) in enumerate(ENVS):
@@ -150,12 +171,13 @@ def plot(train_data, temp_data):
         ax = axes[row, 2]
         for a in ALGOS:
             if a in tmpd:
-                ts = sorted(tmpd[a].keys())
-                ms = np.array([tmpd[a][t][0] for t in ts])
-                ss = np.array([tmpd[a][t][1] for t in ts])
-                ax.plot(ts, ms, color=COLORS[a], label=a, alpha=0.9)
-                ax.fill_between(ts, ms - ss, ms + ss, color=COLORS[a], alpha=0.15)
-        ax.set_xlabel("Temperature"); ax.set_ylabel("Returns"); ax.legend(loc="lower right")
+                pts = sorted([(tmpd[a][t][2], tmpd[a][t][0], tmpd[a][t][1]) for t in sorted(tmpd[a].keys())])
+                hs = np.array([p[0] for p in pts])
+                ms = smooth_light(np.array([p[1] for p in pts]))
+                ss = np.array([p[2] for p in pts])
+                ax.plot(hs, ms, color=COLORS[a], label=a, alpha=0.9)
+                ax.fill_between(hs, ms - ss, ms + ss, color=COLORS[a], alpha=0.15)
+        ax.set_xlabel("Entropy H(π)"); ax.set_ylabel("Returns"); ax.legend(loc="upper right")
 
         for col in range(3):
             axes[row, col].set_title(sub_labels[row][col], y=-0.28, fontsize=11, fontweight="normal")
