@@ -29,8 +29,10 @@ class ActorCritic(nn.Module):
         feat = self.shared(obs)
         return self.critic(feat), self.actor(feat)
 
-    def act(self, obs, deterministic=False):
+    def act(self, obs, deterministic=False, temperature=1.0):
         value, logits = self.forward(obs)
+        if temperature != 1.0:
+            logits = logits / temperature
         if deterministic:
             action = logits.argmax(dim=-1)
         else:
@@ -79,8 +81,10 @@ class CentralizedActorCritic(nn.Module):
     def forward_critic(self, joint_obs):
         return self.critic(self.critic_body(joint_obs))
 
-    def act(self, obs, deterministic=False):
+    def act(self, obs, deterministic=False, temperature=1.0):
         logits = self.actor_logits(obs)
+        if temperature != 1.0:
+            logits = logits / temperature
         if deterministic:
             action = logits.argmax(dim=-1)
         else:
